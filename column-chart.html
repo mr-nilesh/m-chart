@@ -1,0 +1,186 @@
+<html>
+    <head>
+
+    </head>
+    <body>
+        <canvas id="myCanvas" width="1000" height="500" style="border:1px solid #d3d3d3;">
+        </canvas>
+    </body>
+
+    <script>
+        // Sample data
+        const data = [{
+            x: 'Apple', y: 110
+        }, {
+            x: 'Samsung', y: 10
+        }, {
+            x: 'LG', y: 190
+        }, {
+            x: 'Hier', y: 1000
+        }, {
+            x: 'Vivo', y: 250
+        }, {
+            x: 'Oppo', y: 110
+        }, {
+            x: 'Sony', y: 110
+        }, {
+            x: 'Nokia', y: 200
+        }, {
+            x: 'Asus', y: -60
+        }, {
+            x: 'Lenovo', y: -390
+        }];
+        const graphElement = document.getElementById("myCanvas");
+        const ctx = graphElement.getContext("2d");
+        // predefined variables
+        const yKey = 'y'; // Y axis key from data
+        const xKey = 'x'; // X axis key from data
+        const boxHeight = graphElement.clientHeight;
+        const boxWidth = graphElement.clientWidth;
+        let xAxisPadding = 50; // Padding from bottom
+        const yAxisPadding = 50; // Padding from left
+        const topPadding = 20;
+        const xAxisNegativeValuePadding = 20;
+        const columnPadding = 5; // Right and left padding of column
+        let yAxisInterval = 100; // NOTE: For now taken static and need to make it dynamic
+        let maxNegative = 0;
+        let totalNegativeValues = 0;
+        let xAxisPosition = 0;
+        let actualInterval = 0;
+        let maxX = getMaxX();
+        let maxY = getMaxY();
+        const xAxisInterval = getXAxisInterval(); // x axis interval
+        if(maxNegative < 0) {
+            xAxisPadding = xAxisNegativeValuePadding;
+        }
+        // Interval range from negative to positive for Y axis
+        let intervalRange = [];
+
+        /*
+         * Get range from maximum negative value to maximum positive values of predefined intervals
+         */
+        function getRange() {
+            for(let i=0; i > maxNegative - yAxisInterval; i-=yAxisInterval) {
+                intervalRange.push(i);
+            }
+            intervalRange.reverse();
+            for(let i=yAxisInterval; i < maxY + yAxisInterval; i += yAxisInterval) {
+                intervalRange.push(i);
+            }
+            return intervalRange;
+        }
+
+        // Returns the max Y value in our data list
+        function getMaxY() {
+            let max = 0;
+            for (var i = 0; i < data.length; i++) {
+                if (data[i][yKey] > max) {
+                    max = data[i][yKey];
+                }
+                if(data[i][yKey] < 0) {
+                    if(data[i][yKey]< maxNegative) {
+                        maxNegative = data[i][yKey];
+                        totalNegativeValues++;
+                    }
+                }
+            }
+            // max += 10 - max % 10;
+            maxNegative = Math.floor(maxNegative/100)*100;
+            return Math.ceil(max/100)*100;
+        }
+
+        // Returns the max X value in our data list
+        function getMaxX() {
+            return data.length;
+        }
+        // Return the x pixel for a graph point
+        function getXMiddlePixel(val) {
+            return yAxisPadding + (val * xAxisInterval) + (xAxisInterval / 2);
+        }
+
+        // Get starting position of column for X axis
+        function getXStartingPixcel(val) {
+            return yAxisPadding + (val * xAxisInterval) + columnPadding;
+        }
+
+        // Get X axis intervals
+        function getXAxisInterval() {
+            return ((boxWidth - yAxisPadding) / (maxX));
+        }
+
+        // Return the y pixel for a graph point
+        function getYPixel(val) {
+            const yPosition = xAxisPosition - (((xAxisPosition - topPadding - actualInterval) / maxY) * val);
+            return yPosition;
+        }
+
+        // Generate X axis labels
+        function generateXAxisLabel(yPosition) {
+            var myMaxX = maxX;
+            for (var i = 0; i < myMaxX; i++) {
+                ctx.fillStyle = '#000';
+                ctx.fillText(data[i][xKey], getXMiddlePixel(i)-5, yPosition + 20);
+                ctx.lineWidth = 2;
+                ctx.moveTo(getXMiddlePixel(i), yPosition);
+                ctx.lineTo(getXMiddlePixel(i), yPosition + 5);
+                ctx.stroke();
+            }
+        }
+
+        function drawYAxis() {
+            // Draw y axis
+            // ctx.beginPath();
+            ctx.lineWidth = 0.1;
+            ctx.moveTo(yAxisPadding, 0);
+            ctx.lineTo(yAxisPadding, boxHeight);
+            ctx.stroke();
+        }
+
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function generateColumns() {
+            for(var i=0; i<data.length; i++) {
+                ctx.beginPath();
+                const width = xAxisInterval - (2 * columnPadding);
+                const height = xAxisPosition - getYPixel(data[i][yKey]);
+                ctx.fillStyle = getRandomColor();
+                // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                ctx.globalAlpha = 0.9;
+                ctx.fillRect(getXStartingPixcel(i), getYPixel(data[i][yKey]), width, height);
+                // ctx.fillStyle = getRandomColor();
+                // ctx.fill();
+            }
+        }
+
+        function drawHorizontalLines() {
+            for(let i=0; i<intervalRange.length; i++) {
+                ctx.lineWidth = 0.1;
+                const intervalValue = (boxHeight - xAxisPadding - topPadding) / intervalRange.length;
+                actualInterval = intervalValue;
+                const yAxisPoint = boxHeight - xAxisPadding - (i * intervalValue);
+                let yPadding = yAxisPadding;
+                if(intervalRange[i] === 0) {
+                    yPadding = 0;
+                    xAxisPosition = yAxisPoint;
+                }
+                ctx.moveTo(yPadding, yAxisPoint);
+                ctx.lineTo(boxWidth, yAxisPoint);
+                ctx.stroke();
+                ctx.font='bold 12px Roboto';
+                ctx.fillText(intervalRange[i], yAxisPadding - 25, yAxisPoint);
+            }
+        }
+        getRange();
+        drawHorizontalLines();
+        drawYAxis();
+        generateColumns();
+        generateXAxisLabel(xAxisPosition);
+    </script>
+</html>
