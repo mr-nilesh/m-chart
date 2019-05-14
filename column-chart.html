@@ -1,10 +1,25 @@
 <html>
     <head>
-
+        <style>
+            #tooltip {
+                background-color:white;
+                border:1px solid blue;
+                position:absolute;
+                left:-200px;
+                top:100px;
+            }
+            .tooltip-divider {
+                border-bottom: 1px solid #ccc;
+            }
+            .tooltip-cat {
+                text-align: center;
+            }
+        </style>
     </head>
     <body>
         <canvas id="myCanvas" width="1000" height="500" style="border:1px solid #d3d3d3;">
         </canvas>
+        <canvas id="tooltip" width=100 height=25></canvas>
     </body>
 
     <script>
@@ -30,8 +45,18 @@
         }, {
             x: 'Lenovo', y: 190
         }];
-        const graphElement = document.getElementById("myCanvas");
+        // const tooltipTemplate = '<div>' +
+        //     '<div class="tooltip-cat">@m=x</div>' +
+        //     '<div class="tooltip-divider"></div>' +
+        //     '<div class="tooltip-cat">@m=y</div>' +
+        //     '</div>';
+        const tooltipTemplate = null;
+        const elementId = 'myCanvas';
+        const tooltipCanvasId = 'tooltip';
+        const graphElement = document.getElementById(elementId);
         const ctx = graphElement.getContext("2d");
+        const tooltipCanvas = document.getElementById(tooltipCanvasId);
+        const tooltipCtx = tooltipCanvas.getContext("2d");
         // predefined variables
         const yKey = 'y'; // Y axis key from data
         const xKey = 'x'; // X axis key from data
@@ -42,7 +67,7 @@
         const topPadding = 20;
         const xAxisNegativeValuePadding = 20;
         const columnPadding = 5; // Right and left padding of column
-        let yAxisInterval = 100; // NOTE: For now taken static and need to make it dynamic
+        let yAxisInterval = 50; // NOTE: For now taken static and need to make it dynamic
         let maxNegative = 0;
         let totalNegativeValues = 0;
         let xAxisPosition = 0;
@@ -55,6 +80,7 @@
         }
         // Interval range from negative to positive for Y axis
         let intervalRange = [];
+        let tooltipData = [];
 
         /*
          * Get range from maximum negative value to maximum positive values of predefined intervals
@@ -151,10 +177,28 @@
                 ctx.beginPath();
                 const width = xAxisInterval - (2 * columnPadding);
                 const height = xAxisPosition - getYPixel(data[i][yKey]);
-                ctx.fillStyle = getRandomColor();
+                const randomColor = getRandomColor();
+                const grd = ctx.createLinearGradient(getXStartingPixcel(i), getYPixel(data[i][yKey]) + height + 40, getXStartingPixcel(i), getYPixel(data[i][yKey]));
+                // grd.addColorStop(0, randomColor);
+                grd.addColorStop(0, 'white');
+                grd.addColorStop(1, randomColor);
+                ctx.fillStyle = grd;
                 // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
                 ctx.globalAlpha = 0.9;
                 ctx.fillRect(getXStartingPixcel(i), getYPixel(data[i][yKey]), width, height);
+
+                // Add tooltip data
+                let tooltipObj = {
+                    x: getXStartingPixcel(i),
+                    y: getYPixel(getYPixel(data[i][yKey])),
+                    x1: getXStartingPixcel(i) + width,
+                    y1: xAxisPosition,
+                    data: data[i],
+                    style: {
+                        color: randomColor
+                    }
+                };
+                tooltipData.push(tooltipObj);
                 // ctx.fillStyle = getRandomColor();
                 // ctx.fill();
             }
@@ -178,10 +222,76 @@
                 ctx.fillText(intervalRange[i], yAxisPadding - 25, yAxisPoint);
             }
         }
+
+        function renderHTMLToCanvas(html, x, y, width, height) {
+            const data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+                '<foreignObject width="100%" height="100%">' +
+                '<div xmlns="http://www.w3.org/1999/xhtml">' +
+                html +
+                '</div>' +
+                '</foreignObject>' +
+                '</svg>';
+
+            const DOMURL = window.URL || window.webkitURL || window;
+
+            let img = new Image();
+            const svg = new Blob([data], {
+            type: 'image/svg+xml;charset=utf-8'
+            });
+            const url = DOMURL.createObjectURL(svg);
+
+            img.onload = function() {
+                tooltipCtx.drawImage(img, x, y);
+                DOMURL.revokeObjectURL(url);
+            }
+
+            img.src = url;
+        }
+
+        function getMousePos(canvas, evt) {
+            var rect = canvas.getBoundingClientRect();
+            return {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            };
+        }
+
         getRange();
         drawHorizontalLines();
         drawYAxis();
         generateColumns();
         generateXAxisLabel(xAxisPosition);
+
+        graphElement.addEventListener('mousemove', (evt) => {
+            const mousePosition = getMousePos(graphElement, evt);
+            const mouseX = mousePosition.x;
+            const mouseY = mousePosition.y;
+            let hit = false;
+            for(let i=0; i<tooltipData.length; i++) {
+                // tooltipCtx.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                // tooltipCanvas.style.left = "-200px";
+                if(mouseX > tooltipData[i].x && mouseX < tooltipData[i].x1 && mouseY > tooltipData[i].y && mouseY < tooltipData[i].y1) {
+                    tooltipCanvas.style.display = 'block';
+                    if(!tooltipTemplate) {
+                        tooltipCanvas.style.left = (mouseX) + 5 + "px";
+                        tooltipCanvas.style.top = (mouseY + 5) + "px";
+                        tooltipCanvas.style.color = tooltipData[i].style.color;
+                        tooltipCanvas.style.border = '1px solid ' + tooltipData[i].style.color;
+                        tooltipCtx.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                        ctx.rect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                        tooltipCtx.fillText(tooltipData[i].data.y, 5, 15);
+                    } else {
+                        tooltipTemplate.replace('@m=x', tooltipData[i].data.x);
+                        tooltipTemplate.replace('@m=y', tooltipData[i].data.y);
+                        // tooltipCanvas.appendChild(tooltipTemplate);
+                        renderHTMLToCanvas(tooltipTemplate, 0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                    }
+                    hit = true;
+                }
+            }
+            if (!hit) {
+                tooltipCanvas.style.display = 'none';
+            }
+        });
     </script>
 </html>
