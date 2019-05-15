@@ -10,16 +10,19 @@
             }
             .tooltip-divider {
                 border-bottom: 1px solid #ccc;
+                height: 5px;
+                width: 100%;
             }
             .tooltip-cat {
                 text-align: center;
+                width: 100%;
             }
         </style>
     </head>
     <body>
         <canvas id="myCanvas" width="1000" height="500" style="border:1px solid #d3d3d3;">
         </canvas>
-        <canvas id="tooltip" width=100 height=25></canvas>
+        <!-- <canvas id="tooltip" width=100 height=25></canvas> -->
     </body>
 
     <script>
@@ -43,14 +46,23 @@
         }, {
             x: 'Asus', y: 1
         }, {
-            x: 'Lenovo', y: 190
+            x: 'Lenovo', y: -190
+        }, {
+            x: 'Nokia', y: -200
+        }, {
+            x: 'Asus', y: -1
+        }, {
+            x: 'Lenovo', y: -190
         }];
-        // const tooltipTemplate = '<div>' +
-        //     '<div class="tooltip-cat">@m=x</div>' +
-        //     '<div class="tooltip-divider"></div>' +
-        //     '<div class="tooltip-cat">@m=y</div>' +
-        //     '</div>';
-        const tooltipTemplate = null;
+        const tooltipTemplate = '<div>' +
+            '<div class="tooltip-cat">@m=x</div>' +
+            '<div class="tooltip-divider"></div>' +
+            '<div class="tooltip-cat">@m=y</div>' +
+            '</div>';
+        // const tooltipTemplate = null;
+        if(tooltipTemplate) {
+            generateTooltipCanvas();
+        }
         const elementId = 'myCanvas';
         const tooltipCanvasId = 'tooltip';
         const graphElement = document.getElementById(elementId);
@@ -174,34 +186,98 @@
 
         function generateColumns() {
             for(var i=0; i<data.length; i++) {
-                ctx.beginPath();
+                // ctx.beginPath();
                 const width = xAxisInterval - (2 * columnPadding);
                 const height = xAxisPosition - getYPixel(data[i][yKey]);
                 const randomColor = getRandomColor();
-                const grd = ctx.createLinearGradient(getXStartingPixcel(i), getYPixel(data[i][yKey]) + height + 40, getXStartingPixcel(i), getYPixel(data[i][yKey]));
-                // grd.addColorStop(0, randomColor);
-                grd.addColorStop(0, 'white');
-                grd.addColorStop(1, randomColor);
-                ctx.fillStyle = grd;
-                // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-                ctx.globalAlpha = 0.9;
-                ctx.fillRect(getXStartingPixcel(i), getYPixel(data[i][yKey]), width, height);
+                // const rectX = getXStartingPixcel(i);
+            // const rectY = getYPixel(data[i][yKey]);
+            // const rectWidth = columnWidth;
+            // const rectHeight = columnHeight;
+                let rectObj = {
+                    x: getXStartingPixcel(i),
+                    y: getYPixel(data[i][yKey]),
+                    width: width,
+                    height: height,
+                    opacity: 0.8
+                };
+                let gradientY = getYPixel(data[i][yKey]) + height + 40;
+                if(data[i][yKey] < 0) {
+                    gradientY = getYPixel(data[i][yKey]) + height - 40;
+                }
+                let gradientObj = {
+                    x: getXStartingPixcel(i),
+                    y: gradientY,
+                    x1: getXStartingPixcel(i),
+                    y1: getYPixel(data[i][yKey])
+                };
+                drawColumnWithGradient(i, randomColor, rectObj, gradientObj);
+                // const grd = ctx.createLinearGradient(getXStartingPixcel(i), getYPixel(data[i][yKey]) + height + 40, getXStartingPixcel(i), getYPixel(data[i][yKey]));
+                // // grd.addColorStop(0, randomColor);
+                // grd.addColorStop(0, 'white');
+                // grd.addColorStop(1, randomColor);
+                // ctx.fillStyle = grd;
+                // // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+                // ctx.globalAlpha = 0.9;
+                // ctx.fillRect(getXStartingPixcel(i), getYPixel(data[i][yKey]), width, height);
 
                 // Add tooltip data
+                let tX = getXStartingPixcel(i);
+                let tY = getYPixel(data[i][yKey]);
+                let x1 = getXStartingPixcel(i) + width;
+                let y1 = xAxisPosition;
+                if(data[i][yKey] < 0) {
+                    tY = xAxisPosition;
+                    y1 = getYPixel(data[i][yKey]);
+                }
                 let tooltipObj = {
-                    x: getXStartingPixcel(i),
-                    y: getYPixel(getYPixel(data[i][yKey])),
-                    x1: getXStartingPixcel(i) + width,
-                    y1: xAxisPosition,
+                    x: tX,
+                    y: tY,
+                    x1: x1,
+                    y1: y1,
                     data: data[i],
+                    column: {
+                        width: width,
+                        height: height
+                    },
                     style: {
                         color: randomColor
-                    }
+                    },
+                    columnObj: rectObj,
+                    gradientObj: gradientObj
                 };
                 tooltipData.push(tooltipObj);
                 // ctx.fillStyle = getRandomColor();
                 // ctx.fill();
             }
+        }
+
+        function drawColumnWithGradient(i, color, rectObj, gradientObj) {
+            ctx.beginPath();
+            const randomColor = color;
+            // const rectX = getXStartingPixcel(i);
+            // const rectY = getYPixel(data[i][yKey]);
+            // const rectWidth = columnWidth;
+            // const rectHeight = columnHeight;
+            const rectX = rectObj.x;
+            const rectY = rectObj.y;
+            const rectWidth = rectObj.width;
+            const rectHeight = rectObj.height;
+            const gradX = gradientObj.x;
+            const gradY = gradientObj.y;
+            const gradX1 = gradientObj.x1;
+            const gradY1 = gradientObj.y1;
+            // ctx.globalAlpha = rectObj.opacity;
+            const grd = ctx.createLinearGradient(gradX, gradY, gradX1, gradY1);
+            // grd.addColorStop(0, randomColor);
+            const rgbColor = hexToRgb(randomColor);
+            grd.addColorStop(0, 'rgb(255,255,255, '+rectObj.opacity+')');
+            grd.addColorStop(1, 'rgb('+rgbColor.r+','+rgbColor.g+','+rgbColor.b+', '+rectObj.opacity+')');
+            ctx.fillStyle = grd;
+            // ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            // ctx.globalAlpha = rectObj.opacity;
+            // ctx.fillRect(getXStartingPixcel(i), getYPixel(data[i][yKey]), width, height);
+            ctx.fillRect(rectX, rectY, rectWidth, rectHeight);
         }
 
         function drawHorizontalLines() {
@@ -223,28 +299,26 @@
             }
         }
 
-        function renderHTMLToCanvas(html, x, y, width, height) {
+        function renderHTMLToCanvas(dom, x, y, width, height) {
             const data = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                 '<foreignObject width="100%" height="100%">' +
-                '<div xmlns="http://www.w3.org/1999/xhtml">' +
-                html +
+                '<div xmlns="http://www.w3.org/1999/xhtml" style="font: 14px sans-serif; text-align: center;">' +
+                    dom.innerHTML +
                 '</div>' +
                 '</foreignObject>' +
                 '</svg>';
-
             const DOMURL = window.URL || window.webkitURL || window;
 
             let img = new Image();
             const svg = new Blob([data], {
-            type: 'image/svg+xml;charset=utf-8'
+                type: 'image/svg+xml;charset=utf-8'
             });
             const url = DOMURL.createObjectURL(svg);
-
-            img.onload = function() {
-                tooltipCtx.drawImage(img, x, y);
+            img.addEventListener("load", function() {
                 DOMURL.revokeObjectURL(url);
-            }
-
+                tooltipCtx.drawImage(img, x, y);
+                dom.style.display = "none";
+            }, false);
             img.src = url;
         }
 
@@ -254,6 +328,29 @@
                 x: evt.clientX - rect.left,
                 y: evt.clientY - rect.top
             };
+        }
+
+        function generateTooltipCanvas() {
+            let dynamicTooltipDOM = document.createElement("canvas");
+            dynamicTooltipDOM.setAttribute('width',100);
+            dynamicTooltipDOM.setAttribute('height',50);
+            dynamicTooltipDOM.setAttribute('id', 'tooltip');
+            document.body.appendChild(dynamicTooltipDOM);
+        }
+
+        function hexToRgb(hex) {
+            // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+            var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+            hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+                return r + r + g + g + b + b;
+            });
+
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
         }
 
         getRange();
@@ -270,23 +367,54 @@
             for(let i=0; i<tooltipData.length; i++) {
                 // tooltipCtx.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
                 // tooltipCanvas.style.left = "-200px";
+                // const gradientObj = {
+                //     x: tooltipData[i].gradientObj.x - 5,
+                //     y: tooltipData[i].gradientObj.y,
+                //     x1: tooltipData[i].gradientObj.x1 + 10,
+                //     y1: tooltipData[i].gradientObj.y1,
+                // };
+                // const rectObj = {
+                //     x: tooltipData[i].columnObj.x - 5,
+                //     y: tooltipData[i].columnObj.y,
+                //     width: tooltipData[i].columnObj.width + 10,
+                //     height: tooltipData[i].columnObj.height,
+                // };
                 if(mouseX > tooltipData[i].x && mouseX < tooltipData[i].x1 && mouseY > tooltipData[i].y && mouseY < tooltipData[i].y1) {
                     tooltipCanvas.style.display = 'block';
+                    tooltipCanvas.style.border = '1px solid ' + tooltipData[i].style.color;
+                    tooltipCanvas.style.textAlign = 'center';
+                    let left = mouseX + 20;
+                    let top = mouseY - 10;
+                    if(mouseX > (boxWidth/2)) {
+                        left = mouseX - 10 - tooltipCanvas.width;
+                    }
+                    tooltipCanvas.style.left = left + "px";
+                    tooltipCanvas.style.top = top + "px";
                     if(!tooltipTemplate) {
-                        tooltipCanvas.style.left = (mouseX) + 5 + "px";
-                        tooltipCanvas.style.top = (mouseY + 5) + "px";
                         tooltipCanvas.style.color = tooltipData[i].style.color;
                         tooltipCanvas.style.border = '1px solid ' + tooltipData[i].style.color;
                         tooltipCtx.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
                         ctx.rect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                        tooltipCtx.textAlign = "center";
                         tooltipCtx.fillText(tooltipData[i].data.y, 5, 15);
                     } else {
-                        tooltipTemplate.replace('@m=x', tooltipData[i].data.x);
-                        tooltipTemplate.replace('@m=y', tooltipData[i].data.y);
-                        // tooltipCanvas.appendChild(tooltipTemplate);
-                        renderHTMLToCanvas(tooltipTemplate, 0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                        let tipTemplate = tooltipTemplate;
+                        tooltipCtx.clearRect(0, 0, tooltipCanvas.width, tooltipCanvas.height);
+                        // tooltipCtx.beginPath();
+                        tipTemplate = tipTemplate.replace('@m=x', tooltipData[i].data.x);
+                        tipTemplate = tipTemplate.replace('@m=y', tooltipData[i].data.y);
+                        var temp = document.createElement('div');
+                        temp.innerHTML = tipTemplate;
+                        tooltipCtx.textAlign = "center";
+                        renderHTMLToCanvas(temp, 0, 0, tooltipCanvas.width, tooltipCanvas.height);
                     }
+                    // tooltipData[i].columnObj.opacity = 0.5;
+                    // drawColumnWithGradient(i, tooltipData[i].style.color, tooltipData[i].columnObj, tooltipData[i].gradientObj);
                     hit = true;
+                } else {
+                    // ctx.clearRect(rectObj.x, rectObj.y, rectObj.width, rectObj.height);
+                    // tooltipData[i].columnObj.opacity = 0.8;
+                    // drawColumnWithGradient(i, tooltipData[i].style.color, tooltipData[i].columnObj, tooltipData[i].gradientObj);
                 }
             }
             if (!hit) {
